@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using System;
 using VeinEngine.Engine;
+using Newtonsoft.Json;
 
 namespace VeinEngine
 {
@@ -38,10 +39,8 @@ namespace VeinEngine
 
 		protected Camera camera;
 
-		public static bool Fullbright = true;
-
-		Model model;
-		Texture2D tex;
+		public static bool Fullbright = false;
+		protected static bool MouseLock = true;
 
 		public GameManager()
 		{
@@ -68,9 +67,6 @@ namespace VeinEngine
 		protected override void LoadContent()
 		{
 			_spriteBatch = new SpriteBatch(GraphicsDevice);
-
-			model = Content.Load<Model>("Models/trainstation_test_notex");
-			tex = Content.Load<Texture2D>("Textures/UVGrid");
 		}
 
 		protected override void Update(GameTime gameTime)
@@ -82,10 +78,18 @@ namespace VeinEngine
 
 			Point mouseRelativeToCenter = new Point(state.X - GraphicsDevice.Viewport.Width / 2, state.Y - GraphicsDevice.Viewport.Height / 2);
 
-			camera.rotation.Y -= mouseRelativeToCenter.X * 10f * (float)gameTime.ElapsedGameTime.TotalSeconds;
-			camera.rotation.X -= mouseRelativeToCenter.Y * 10f * (float)gameTime.ElapsedGameTime.TotalSeconds;
+			if(MouseLock)
+			{
+				camera.rotation.Y -= mouseRelativeToCenter.X * 10f * (float)gameTime.ElapsedGameTime.TotalSeconds;
+				camera.rotation.X -= mouseRelativeToCenter.Y * 10f * (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-			Mouse.SetPosition(GraphicsDevice.Viewport.Width / 2, GraphicsDevice.Viewport.Height / 2);
+				Mouse.SetPosition(GraphicsDevice.Viewport.Width / 2, GraphicsDevice.Viewport.Height / 2);
+				IsMouseVisible = false;
+			}
+			else
+			{
+				IsMouseVisible = true;
+			}
 
 			camera.rotation.X = MathF.Max(MathF.Min(camera.rotation.X,90),-90);
 
@@ -119,6 +123,10 @@ namespace VeinEngine
 			{
 				Fullbright = !Fullbright;
 			}
+			if (KeyboardIN.HasBeenPressed(Keys.OemTilde))
+			{
+				MouseLock = !MouseLock;
+			}
 
 			camera.UpdateMatrices();
 
@@ -128,8 +136,6 @@ namespace VeinEngine
 		protected override void Draw(GameTime gameTime)
 		{
 			GraphicsDevice.Clear(Color.Black);
-
-			camera.RenderModel(model,tex,new Vector3(0,-1,0));
 
 			// TODO: Add your drawing code here
 

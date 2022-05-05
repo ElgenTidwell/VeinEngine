@@ -10,6 +10,7 @@
 
 #-------------------------------- References --------------------------------#
 
+/reference:..\..\VeinContentPipeline\bin\Debug\VeinContentPipeline.dll
 
 #---------------------------------- Content ---------------------------------#
 
