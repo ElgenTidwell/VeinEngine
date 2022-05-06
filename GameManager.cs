@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Media;
 using System;
 using VeinEngine.Engine;
 using Newtonsoft.Json;
+using ChaiFoxes.FMODAudio; //thank you, you are a godsend
 
 namespace VeinEngine
 {
@@ -42,6 +43,9 @@ namespace VeinEngine
 		public static bool Fullbright = false;
 		protected static bool MouseLock = true;
 
+		Model model;
+		Texture2D tex;
+
 		public GameManager()
 		{
 			_graphics = new GraphicsDeviceManager(this);
@@ -57,6 +61,8 @@ namespace VeinEngine
 			_graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
 			_graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
 			_graphics.IsFullScreen = true;
+			_graphics.PreferMultiSampling = true;
+
 			_graphics.ApplyChanges();
 
 			camera = new Camera(new Vector3(0,1,0),new Vector3(90, 180, 0),MathHelper.ToRadians(90),0.1f,100f);
@@ -67,6 +73,15 @@ namespace VeinEngine
 		protected override void LoadContent()
 		{
 			_spriteBatch = new SpriteBatch(GraphicsDevice);
+
+			model = Content.Load<Model>("Models/trainstation_test_notex");
+			tex = Content.Load<Texture2D>("Textures/UVGrid");
+
+			FMODManager.Init(FMODMode.CoreAndStudio,"Content/Audio");
+
+			var sound = CoreSystem.LoadStreamedSound("Planetary Expedition.ogg");
+			var channel = sound.Play();
+			channel.Looping = true;
 		}
 
 		protected override void Update(GameTime gameTime)
@@ -135,7 +150,9 @@ namespace VeinEngine
 
 		protected override void Draw(GameTime gameTime)
 		{
-			GraphicsDevice.Clear(Color.Black);
+			GraphicsDevice.Clear(Color.SkyBlue);
+
+			camera.RenderModel(model,tex,new Vector3(0,-1,0));
 
 			// TODO: Add your drawing code here
 

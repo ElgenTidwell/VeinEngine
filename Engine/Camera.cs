@@ -76,10 +76,10 @@ namespace VeinEngine.Engine
 				{
 					effect.LightingEnabled = !GameManager.Fullbright;
 					
-					effect.DirectionalLight0.DiffuseColor = new Vector3(1.2f,1.1f,0.9f);
+					effect.DirectionalLight0.DiffuseColor = new Vector3(1.2f,1f,1f);
 					effect.DirectionalLight0.Direction = new Vector3(-0.2f,-1f,0.6f);
 
-					effect.AmbientLightColor = new Vector3(0.1f, 0.04f, 0.04f);
+					effect.AmbientLightColor = new Vector3(0.2f, 0.15f, 0.15f);
 					effect.TextureEnabled = true;
 					//effect.Texture = tex;
 					effect.View = viewMatrix;

@@ -20,6 +20,9 @@
 /processorParam:Quality=Best
 /build:Audio/boredpart2.ogg
 
+#begin Audio/Planetary Expedition.ogg
+/copy:Audio/Planetary Expedition.ogg
+
 #begin Models/trainstation_test_notex.dae
 /importer:FbxImporter
 /processor:ModelProcessor
