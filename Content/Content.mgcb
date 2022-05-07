@@ -14,14 +14,8 @@
 
 #---------------------------------- Content ---------------------------------#
 
-#begin Audio/boredpart2.ogg
-/importer:OggImporter
-/processor:SongProcessor
-/processorParam:Quality=Best
-/build:Audio/boredpart2.ogg
-
-#begin Audio/Planetary Expedition.ogg
-/copy:Audio/Planetary Expedition.ogg
+#begin Audio/missing.wav
+/copy:Audio/missing.wav
 
 #begin Models/trainstation_test_notex.dae
 /importer:FbxImporter

@@ -101,6 +101,11 @@ namespace VeinEngine
 
 			FMODManager.Init(FMODMode.CoreAndStudio,"Content/Audio");
 
+			var song = CoreSystem.LoadStreamedSound("missing.wav");
+			var channel = song.Play();
+			channel.Looping = true;
+			channel.Volume = 0.2f;
+
 			listner = new Listener3D();
 
 			listner.UpOrientation = Vector3.Up;
@@ -174,16 +179,14 @@ namespace VeinEngine
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.W))
 			{
-				float xsin = 1;
-				wishdir.X += -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				wishdir.Z += -MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.X += -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.Z += -MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 				//wishdir.Y = MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.S))
 			{
-				float xsin = 1;
-				wishdir.X += MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				wishdir.Z += MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.X += MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.Z += MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 				//wishdir.Y = -MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 			}
 			if (KeyboardIN.HasBeenPressed(Keys.F))
@@ -195,14 +198,25 @@ namespace VeinEngine
 				MouseLock = !MouseLock;
 			}
 
-			if(KeyboardIN.HasBeenPressed(Keys.Space))
-			{
-				float xsin = MathF.Cos(MathHelper.ToRadians(camera.rotation.X));
-				Vector3 camForward;
-				camForward.X = -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camForward.Z = -MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camForward.Y = +MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+			float xsin = MathF.Cos(MathHelper.ToRadians(camera.rotation.X));
+			Vector3 camForward,camRight,camUp;
+			camForward.X = -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin;
+			camForward.Z = -MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin;
+			camForward.Y = +MathF.Sin(MathHelper.ToRadians(camera.rotation.X));
 
+			camRight.X = MathF.Cos(MathHelper.ToRadians(camera.rotation.Y));
+			camRight.Y = MathF.Sin(MathHelper.ToRadians(camera.rotation.Z));
+			camRight.Z = -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y));
+
+			camForward.Normalize();
+			camRight.Normalize();
+
+			camUp = Vector3.Cross(camForward, camRight);
+
+			camUp.Normalize();
+
+			if (KeyboardIN.HasBeenPressed(Keys.Space))
+			{
 				WorldObject rigidbodyTest = new WorldObject();
 				rigidbodyTest.position = camera.position + Vector3.Up + camForward*18;
 				rigidbodyTest.rotation = camForward;
@@ -236,6 +250,8 @@ namespace VeinEngine
 			foreach (WorldObject ent in loadedEntities) ent.Update();
 
 			listner.Position3D = camera.position;
+			listner.ForwardOrientation = camForward;
+			listner.UpOrientation = camUp;
 
 			base.Update(gameTime);
 		}
