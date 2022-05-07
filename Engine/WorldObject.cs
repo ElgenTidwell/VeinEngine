@@ -29,9 +29,9 @@ namespace VeinEngine.Engine
 				b.Start();
 			}
 		}
-		public void Update()
+		public void Update(GameTime gameTime)
 		{
-			foreach (var b in components) b.Update();
+			foreach (var b in components) b.Update(gameTime);
 		}
 		public void Render()
 		{
@@ -59,7 +59,7 @@ namespace VeinEngine.Engine
 		public WorldObject parentObject;
 
 		public abstract void Start();
-		public abstract void Update();
+		public abstract void Update(GameTime gameTime);
 		public abstract void Render();
 	}
 }

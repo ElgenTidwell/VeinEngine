@@ -13,15 +13,13 @@ namespace VeinEngine.Engine
 	{
 		public static Camera main;
 
-		public Vector3 position, rotation;
+		public Vector3 position, rotation, viewOffset = Vector3.Zero;
 
 		public Matrix worldMatrix, viewMatrix, projectionMatrix;
 
 		public BasicEffect basicEffect;
 
 		BlendState _blendState;
-
-		public Capsule collisionBox;
 
 		public Camera(Vector3 position, Vector3 rotation, float fov, float nearPlane, float farPlane)
 		{
@@ -48,17 +46,12 @@ namespace VeinEngine.Engine
 			basicEffect.Alpha = 1f;
 			basicEffect.TextureEnabled = false;
 			basicEffect.LightingEnabled = false;
-
-			collisionBox = new Capsule(new BEPUutilities.Vector3(position.X,position.Y,position.Z), 2, 0.2f,0.5f);
-			collisionBox.LocalInertiaTensorInverse = new BEPUutilities.Matrix3x3();
 		}
 
 		public void UpdateMatrices()
 		{
-			collisionBox.Position = new BEPUutilities.Vector3(position.X, position.Y, position.Z);
-
 			viewMatrix = Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(rotation.Y), MathHelper.ToRadians(rotation.X), MathHelper.ToRadians(rotation.Z));
-			viewMatrix.Translation = position + Vector3.Up;
+			viewMatrix.Translation = position + viewOffset;
 
 			viewMatrix = Matrix.Invert(viewMatrix);
 
@@ -97,7 +90,8 @@ namespace VeinEngine.Engine
 					
 					effect.AmbientLightColor = new Vector3(0.2f, 0.15f, 0.15f);
 					effect.TextureEnabled = true;
-					//effect.Texture = tex;
+					effect.Texture = GameManager._instance.tex;
+
 					effect.View = viewMatrix;
 					Matrix localworld = Matrix.CreateFromYawPitchRoll(rot.Y,rot.X,rot.Z);
 					localworld.Translation = pos;
@@ -120,7 +114,8 @@ namespace VeinEngine.Engine
 
 					effect.AmbientLightColor = new Vector3(0.2f, 0.15f, 0.15f);
 					effect.TextureEnabled = true;
-					//effect.Texture = tex;
+					effect.Texture = tex;
+
 					effect.View = viewMatrix;
 					effect.World = mat;
 					effect.Projection = projectionMatrix;

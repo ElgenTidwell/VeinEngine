@@ -16,7 +16,7 @@ namespace VeinEngine.Engine.BaseComponents
 			//TODO: compute mesh boundaries
 		}
 
-		public override void Update()
+		public override void Update(GameTime gameTime)
 		{
 			//update is practically useless, as this is a static mesh that doesnt animate.
 		}

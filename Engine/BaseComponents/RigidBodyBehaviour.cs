@@ -11,13 +11,22 @@ namespace VeinEngine.Engine.BaseComponents
 	{
 		Box box;
 		public float mass = 0.3f;
-		public Vector3 bounds = Vector3.One * 2;
+		public Vector3 bounds = Vector3.Zero, center = Vector3.Zero;
 		public override void Render()
 		{
 		}
 
 		public override void Start()
 		{
+			if (parentObject.GetBehaviour<StaticMeshRenderer>() != null)
+			{
+				BoundingBox box = ModelMath.GetBounds(parentObject.GetBehaviour<StaticMeshRenderer>().mesh);
+				bounds.X = box.Max.X * 2;
+				bounds.Y = box.Max.Y * 2;
+				bounds.Z = box.Max.Z * 2;
+				center = (box.Min*2 + box.Max*2)/2+Vector3.Up/2;
+			}
+
 			box = new Box(new BEPUutilities.Vector3(parentObject.position.X, parentObject.position.Y, parentObject.position.Z), bounds.X, bounds.Y, bounds.Z, mass);
 
 			var q = Quaternion.CreateFromYawPitchRoll(MathHelper.ToRadians(parentObject.rotation.Y), MathHelper.ToRadians(parentObject.rotation.X), MathHelper.ToRadians(parentObject.rotation.Z));
@@ -27,12 +36,12 @@ namespace VeinEngine.Engine.BaseComponents
 			GameManager._instance.space.Add(box);
 		}
 
-		public override void Update()
+		public override void Update(GameTime gameTime)
 		{
 			BEPUutilities.Matrix w = box.WorldTransform;
 
 			Matrix mat = new Matrix(w.M11,w.M12,w.M13,w.M14,w.M21,w.M22,w.M23,w.M24,w.M31,w.M32,w.M33,w.M34,w.M41,w.M42,w.M43,w.M44);
-
+			mat.Translation += center;
 			parentObject.transformationMatrix = mat;
 			parentObject.useMatrix = true;
 
