@@ -1,11 +1,18 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using BEPUphysics;
+using BEPUphysics.Entities.Prefabs;
+using System;
+using BEPUphysics.EntityStateManagement;
+using BEPUphysics.Entities;
 
 namespace VeinEngine.Engine
 {
 	public class Camera
 	{
+		public static Camera main;
+
 		public Vector3 position, rotation;
 
 		public Matrix worldMatrix, viewMatrix, projectionMatrix;
@@ -14,8 +21,12 @@ namespace VeinEngine.Engine
 
 		BlendState _blendState;
 
+		public Capsule collisionBox;
+
 		public Camera(Vector3 position, Vector3 rotation, float fov, float nearPlane, float farPlane)
 		{
+			main = this;
+
 			this.position = position;
 			this.rotation = rotation;
 
@@ -37,12 +48,17 @@ namespace VeinEngine.Engine
 			basicEffect.Alpha = 1f;
 			basicEffect.TextureEnabled = false;
 			basicEffect.LightingEnabled = false;
+
+			collisionBox = new Capsule(new BEPUutilities.Vector3(position.X,position.Y,position.Z), 2, 0.2f,0.5f);
+			collisionBox.LocalInertiaTensorInverse = new BEPUutilities.Matrix3x3();
 		}
 
 		public void UpdateMatrices()
 		{
+			collisionBox.Position = new BEPUutilities.Vector3(position.X, position.Y, position.Z);
+
 			viewMatrix = Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(rotation.Y), MathHelper.ToRadians(rotation.X), MathHelper.ToRadians(rotation.Z));
-			viewMatrix.Translation = position;
+			viewMatrix.Translation = position + Vector3.Up;
 
 			viewMatrix = Matrix.Invert(viewMatrix);
 
@@ -68,7 +84,7 @@ namespace VeinEngine.Engine
 				g.DrawPrimitives(PrimitiveType.TriangleList, 0, length);
 			}
 		}
-		public void RenderModel(Model m,Texture2D tex,Vector3 pos)
+		public void RenderModel(Model m,Texture2D tex,Vector3 pos, Vector3 rot)
 		{
 			foreach(ModelMesh mesh in m.Meshes)
 			{
@@ -78,14 +94,35 @@ namespace VeinEngine.Engine
 					
 					effect.DirectionalLight0.DiffuseColor = new Vector3(1.2f,1f,1f);
 					effect.DirectionalLight0.Direction = new Vector3(-0.2f,-1f,0.6f);
+					
+					effect.AmbientLightColor = new Vector3(0.2f, 0.15f, 0.15f);
+					effect.TextureEnabled = true;
+					//effect.Texture = tex;
+					effect.View = viewMatrix;
+					Matrix localworld = Matrix.CreateFromYawPitchRoll(rot.Y,rot.X,rot.Z);
+					localworld.Translation = pos;
+					effect.World = localworld;
+					effect.Projection = projectionMatrix;
+				}
+				mesh.Draw();
+			}
+		}
+		public void RenderModel(Model m, Texture2D tex, Matrix mat)
+		{
+			foreach (ModelMesh mesh in m.Meshes)
+			{
+				foreach (BasicEffect effect in mesh.Effects)
+				{
+					effect.LightingEnabled = !GameManager.Fullbright;
+
+					effect.DirectionalLight0.DiffuseColor = new Vector3(1.2f, 1f, 1f);
+					effect.DirectionalLight0.Direction = new Vector3(-0.2f, -1f, 0.6f);
 
 					effect.AmbientLightColor = new Vector3(0.2f, 0.15f, 0.15f);
 					effect.TextureEnabled = true;
 					//effect.Texture = tex;
 					effect.View = viewMatrix;
-					Matrix localworld = worldMatrix;
-					localworld.Translation = pos;
-					effect.World = localworld;
+					effect.World = mat;
 					effect.Projection = projectionMatrix;
 				}
 				mesh.Draw();

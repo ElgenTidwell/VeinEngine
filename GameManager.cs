@@ -6,6 +6,10 @@ using System;
 using VeinEngine.Engine;
 using Newtonsoft.Json;
 using ChaiFoxes.FMODAudio; //thank you, you are a godsend
+using System.Collections.Generic;
+using VeinEngine.Engine.BaseComponents;
+using BEPUphysics;
+using BEPUphysics.Entities.Prefabs;
 
 namespace VeinEngine
 {
@@ -38,13 +42,22 @@ namespace VeinEngine
 		private GraphicsDeviceManager _graphics;
 		private SpriteBatch _spriteBatch;
 
+		public Space space;
+
 		protected Camera camera;
 
 		public static bool Fullbright = false;
 		protected static bool MouseLock = true;
 
-		Model model;
+		Model map;
 		Texture2D tex;
+
+		Model defaultCube;
+
+		List<WorldObject> loadedEntities = new List<WorldObject>();
+
+		Listener3D listner;
+		Vector3 wishdir = Vector3.Zero;
 
 		public GameManager()
 		{
@@ -65,7 +78,15 @@ namespace VeinEngine
 
 			_graphics.ApplyChanges();
 
-			camera = new Camera(new Vector3(0,1,0),new Vector3(90, 180, 0),MathHelper.ToRadians(90),0.1f,100f);
+			camera = new Camera(new Vector3(0,1,0),new Vector3(90, 180, 0),MathHelper.ToRadians(90),0.03f,100f);
+
+			space = new Space();
+
+			space.Add(new Box(new BEPUutilities.Vector3(0,-3f,0),600,5,600));
+
+			space.Add(camera.collisionBox);
+
+			space.ForceUpdater.Gravity = new BEPUutilities.Vector3(0, -9.81f, 0);
 
 			base.Initialize();
 		}
@@ -74,14 +95,44 @@ namespace VeinEngine
 		{
 			_spriteBatch = new SpriteBatch(GraphicsDevice);
 
-			model = Content.Load<Model>("Models/trainstation_test_notex");
+			map = Content.Load<Model>("Models/trainstation_test_notex");
 			tex = Content.Load<Texture2D>("Textures/UVGrid");
+			defaultCube = Content.Load<Model>("Models/untitled");
 
 			FMODManager.Init(FMODMode.CoreAndStudio,"Content/Audio");
 
-			var sound = CoreSystem.LoadStreamedSound("Planetary Expedition.ogg");
-			var channel = sound.Play();
-			channel.Looping = true;
+			listner = new Listener3D();
+
+			listner.UpOrientation = Vector3.Up;
+			listner.ForwardOrientation = Vector3.Forward;
+
+			WorldObject mapObj = new WorldObject();
+
+			StaticMeshRenderer smr = new StaticMeshRenderer();
+			smr.mesh = map;
+			smr.texture = tex;
+
+			mapObj.AddBehaviour(smr);
+
+			mapObj.Start();
+
+			WorldObject rigidbodyTest = new WorldObject();
+			rigidbodyTest.position = new Vector3(1, 12, 2);
+
+			StaticMeshRenderer smr2 = new StaticMeshRenderer();
+			smr2.mesh = defaultCube;
+			smr2.texture = tex;
+
+			RigidBodyBehaviour rbb = new RigidBodyBehaviour();
+			rbb.mass = 1.5f;
+
+			rigidbodyTest.AddBehaviour(smr2);
+			rigidbodyTest.AddBehaviour(rbb);
+
+			rigidbodyTest.Start();
+
+			loadedEntities.Add(mapObj);
+			loadedEntities.Add(rigidbodyTest);
 		}
 
 		protected override void Update(GameTime gameTime)
@@ -109,30 +160,31 @@ namespace VeinEngine
 			camera.rotation.X = MathF.Max(MathF.Min(camera.rotation.X,90),-90);
 
 			KeyboardIN.GetState();
+			wishdir = Vector3.Lerp(wishdir,Vector3.Zero, (float)gameTime.ElapsedGameTime.TotalSeconds * 10);
 
 			if (Keyboard.GetState().IsKeyDown(Keys.A))
 			{
-				camera.position.X -= MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camera.position.Z += MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.X += -MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.Z += MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.D))
 			{
-				camera.position.X += MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camera.position.Z -= MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.X += MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.Z += -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.W))
 			{
-				float xsin = MathF.Cos(MathHelper.ToRadians(camera.rotation.X));
-				camera.position.X -= MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camera.position.Z -= MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camera.position.Y += MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				float xsin = 1;
+				wishdir.X += -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.Z += -MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				//wishdir.Y = MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.S))
 			{
-				float xsin = MathF.Cos(MathHelper.ToRadians(camera.rotation.X));
-				camera.position.X += MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camera.position.Z += MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
-				camera.position.Y -= MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				float xsin = 1;
+				wishdir.X += MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				wishdir.Z += MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				//wishdir.Y = -MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
 			}
 			if (KeyboardIN.HasBeenPressed(Keys.F))
 			{
@@ -143,7 +195,47 @@ namespace VeinEngine
 				MouseLock = !MouseLock;
 			}
 
+			if(KeyboardIN.HasBeenPressed(Keys.Space))
+			{
+				float xsin = MathF.Cos(MathHelper.ToRadians(camera.rotation.X));
+				Vector3 camForward;
+				camForward.X = -MathF.Sin(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				camForward.Z = -MathF.Cos(MathHelper.ToRadians(camera.rotation.Y)) * xsin * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+				camForward.Y = +MathF.Sin(MathHelper.ToRadians(camera.rotation.X)) * (float)gameTime.ElapsedGameTime.TotalSeconds * 5;
+
+				WorldObject rigidbodyTest = new WorldObject();
+				rigidbodyTest.position = camera.position + Vector3.Up + camForward*18;
+				rigidbodyTest.rotation = camForward;
+
+				StaticMeshRenderer smr2 = new StaticMeshRenderer();
+				smr2.mesh = defaultCube;
+				smr2.texture = tex;
+
+				RigidBodyBehaviour rbb = new RigidBodyBehaviour();
+				rbb.mass = 1.5f;
+
+				rigidbodyTest.AddBehaviour(smr2);
+				rigidbodyTest.AddBehaviour(rbb);
+
+				rigidbodyTest.Start();
+
+				loadedEntities.Add(rigidbodyTest);
+			}
+
+			wishdir = Vector3.Clamp(wishdir, -Vector3.One, Vector3.One);
+
+			camera.collisionBox.LinearVelocity = new BEPUutilities.Vector3(wishdir.X * 12, camera.collisionBox.LinearVelocity.Y, wishdir.Z * 12);
+
+			Vector3 p = new Vector3(camera.collisionBox.Position.X, camera.collisionBox.Position.Y, camera.collisionBox.Position.Z);
+			camera.position = p;
+
 			camera.UpdateMatrices();
+
+			space.Update();
+
+			foreach (WorldObject ent in loadedEntities) ent.Update();
+
+			listner.Position3D = camera.position;
 
 			base.Update(gameTime);
 		}
@@ -152,11 +244,22 @@ namespace VeinEngine
 		{
 			GraphicsDevice.Clear(Color.SkyBlue);
 
-			camera.RenderModel(model,tex,new Vector3(0,-1,0));
+			//camera.RenderModel(map,tex,Vector3.Zero);
 
-			// TODO: Add your drawing code here
+			foreach (WorldObject ent in loadedEntities) ent.Render();
 
 			base.Draw(gameTime);
+		}
+
+		protected override void UnloadContent()
+		{
+			loadedEntities.Clear();
+
+			GraphicsDevice.Dispose();
+
+			FMODManager.Unload();
+
+			base.UnloadContent();
 		}
 	}
 }
