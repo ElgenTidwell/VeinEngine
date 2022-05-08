@@ -21,8 +21,11 @@ namespace VeinEngine.Engine
 
 		BlendState _blendState;
 
+		Effect custom;
+
 		public Camera(Vector3 position, Vector3 rotation, float fov, float nearPlane, float farPlane)
 		{
+			//custom = GameManager._instance.Content.Load<Effect>("PixelTest");
 			main = this;
 
 			this.position = position;
@@ -86,7 +89,7 @@ namespace VeinEngine.Engine
 					effect.LightingEnabled = !GameManager.Fullbright;
 					
 					effect.DirectionalLight0.DiffuseColor = new Vector3(1.2f,1f,1f);
-					effect.DirectionalLight0.Direction = new Vector3(-0.2f,-1f,0.6f);
+					effect.DirectionalLight0.Direction = new Vector3(-1f,-1f,0.6f);
 					
 					effect.AmbientLightColor = new Vector3(0.2f, 0.15f, 0.15f);
 					effect.TextureEnabled = true;
@@ -119,6 +122,7 @@ namespace VeinEngine.Engine
 					effect.View = viewMatrix;
 					effect.World = mat;
 					effect.Projection = projectionMatrix;
+
 				}
 				mesh.Draw();
 			}

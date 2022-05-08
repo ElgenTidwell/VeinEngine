@@ -11,6 +11,9 @@ using VeinEngine.Engine.BaseComponents;
 using BEPUphysics;
 using BEPUphysics.Entities.Prefabs;
 using VeinEngine.Engine.Shadows;
+using System.Threading;
+using BEPUphysics.CollisionRuleManagement;
+using BEPUphysics.BroadPhaseEntries;
 
 public class KeyboardIN
 {
@@ -50,6 +53,8 @@ namespace VeinEngine
 		protected static bool MouseLock = true;
 
 		Model map;
+		Texture2D smap;
+		int texelsresolution = 10;
 		public Texture2D tex;
 
 		Model defaultCube;
@@ -57,7 +62,18 @@ namespace VeinEngine
 		public List<WorldObject> loadedEntities = new List<WorldObject>();
 		WorldObject player;
 
+		int castX, castZ;
+
 		Listener3D listner;
+
+		// Make a render target, 
+		RenderTarget2D rt2d;
+
+		// Make a global or static Depth stencil state.
+		// Note don't just make it and then set it in draw. *** It should be premade like so.*** 
+		// Re-making every frame would cause a ton of garbage collections.
+		DepthStencilState ds_depth_on_less_than = new DepthStencilState() { DepthBufferEnable = true, DepthBufferFunction = CompareFunction.Less };
+
 
 		public GameManager()
 		{
@@ -81,9 +97,9 @@ namespace VeinEngine
 			space = new Space();
 
 			//space.Add(new Box(new BEPUutilities.Vector3(0,-3f,0),600,5,600));
-
+			rt2d = new RenderTarget2D(GraphicsDevice, texelsresolution, (int)(texelsresolution / (GraphicsDevice.Viewport.AspectRatio)));
 			space.ForceUpdater.Gravity = new BEPUutilities.Vector3(0, -9.81f, 0);
-
+			smap = new Texture2D(GraphicsDevice, (int)(GraphicsDevice.Viewport.Width / texelsresolution), (int)(GraphicsDevice.Viewport.Height/texelsresolution));
 			base.Initialize();
 		}
 
@@ -171,14 +187,83 @@ namespace VeinEngine
 			base.Update(gameTime);
 		}
 
+		void ShadowCast()
+		{
+			Color[] data = new Color[smap.Width * smap.Height];
+			smap.GetData(data);
+
+			SetColors(data);
+		}
+
+		void SetColors(Color[] data)
+		{
+			for (int x = 0; x < smap.Width; x++)
+			{
+				for (int z = 0; z < smap.Height; z++)
+				{
+					castX = x;
+					castZ = z;
+
+					Color col = ColorCast();
+
+					data[z * smap.Width + x] = col;
+				}
+			}
+			smap.SetData(data);
+		}
+		Color ColorCast()
+		{
+			Color _color;
+			_color = new Color(0, 0, 0, 0);
+
+			Vector2 p = new Vector2(((float)castX / (float)smap.Width) * GraphicsDevice.Viewport.Width,
+												((float)castZ / ((float)smap.Height)) * GraphicsDevice.Viewport.Height);
+
+			Ray screenRay = GetScreenVector2AsRayInto3dWorld(p, Camera.main.projectionMatrix, Camera.main.viewMatrix, Camera.main.worldMatrix, 0.03f, GraphicsDevice);
+			screenRay.Position -= (Camera.main.viewOffset / 2f) - Vector3.Up*0.04f;
+			RayCastResult hit;
+			BEPUutilities.Ray ray = new BEPUutilities.Ray(new BEPUutilities.Vector3(screenRay.Position.X, screenRay.Position.Y, screenRay.Position.Z), new BEPUutilities.Vector3(screenRay.Direction.X, screenRay.Direction.Y, screenRay.Direction.Z));
+
+			if (space.RayCast(ray, 100, RayCastFilter, out hit))
+			{
+				RayCastResult hit2;
+				Ray toLight = new Ray(new Vector3(hit.HitData.Location.X + hit.HitData.Normal.X * 0.1f, hit.HitData.Location.Y + hit.HitData.Normal.Y * -0.1f,
+					hit.HitData.Location.Z + hit.HitData.Normal.Z * 0.1f), new Vector3(1f, 1f, -0.6f));
+				ray = new BEPUutilities.Ray(new BEPUutilities.Vector3(toLight.Position.X, toLight.Position.Y, toLight.Position.Z), new BEPUutilities.Vector3(toLight.Direction.X, toLight.Direction.Y, toLight.Direction.Z));
+
+				if (space.RayCast(ray, 50, RayCastFilter2, out hit2))
+				{
+					return new Color(0, 0, 0, 150);
+				}
+			}
+			return _color;
+		}
+		bool RayCastFilter(BroadPhaseEntry entry)
+		{
+			return entry != player.GetBehaviour<PlayerBehaviour>().collisionBox.CollisionInformation && entry.CollisionRules.Personal <= CollisionRule.Normal;
+		}
+		bool RayCastFilter2(BroadPhaseEntry entry)
+		{
+			return entry.CollisionRules.Personal <= CollisionRule.Normal;
+		}
+
 		protected override void Draw(GameTime gameTime)
 		{
-			GraphicsDevice.SetRenderTarget(null);
+			ShadowCast();
+
 			GraphicsDevice.Clear(Color.SkyBlue);
 
 			GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
 			foreach (WorldObject ent in loadedEntities) ent.Render();
+
+			_spriteBatch.Begin();
+
+			GraphicsDevice.SamplerStates[0] = SamplerState.AnisotropicClamp;
+
+			_spriteBatch.Draw(smap, GraphicsDevice.Viewport.Bounds,Color.White);
+
+			_spriteBatch.End();
 
 			base.Draw(gameTime);
 		}
@@ -192,6 +277,42 @@ namespace VeinEngine
 			FMODManager.Unload();
 
 			base.UnloadContent();
+		}
+
+		/// <summary>
+		/// Near plane is typically just 0 in this function or some extremely small value. Far plane cant be more then one and so i just folded it automatically. In truth this isnt the near plane its the min clip but whatever.
+		/// </summary>
+		public Ray GetScreenVector2AsRayInto3dWorld(Vector2 screenPosition, Matrix projectionMatrix, Matrix viewMatrix, Matrix cameraWorld, float near, GraphicsDevice device)
+		{
+			//if (far > 1.0f) // this is actually a misnomer which caused me a headache this is supposed to be the max clip value not the far plane.
+			//    throw new ArgumentException("Far Plane can't be more then 1f or this function will fail to work in many cases");
+			Vector3 nearScreenPoint = new Vector3(screenPosition.X, screenPosition.Y, near); // must be more then zero.
+			Vector3 nearWorldPoint = Unproject(nearScreenPoint, projectionMatrix, viewMatrix, Matrix.Identity, device);
+
+			Vector3 farScreenPoint = new Vector3(screenPosition.X, screenPosition.Y, 1f); // the projection matrice's far plane value.
+			Vector3 farWorldPoint = Unproject(farScreenPoint, projectionMatrix, viewMatrix, Matrix.Identity, device);
+
+			Vector3 worldRaysNormal = Vector3.Normalize((farWorldPoint + nearWorldPoint) - nearWorldPoint);
+			return new Ray(nearWorldPoint, worldRaysNormal);
+		}
+
+		/// <summary>
+		/// Note the source position internally expects a Vector3 with a z value.
+		/// That Z value can Not excced 1.0f or the function will error. I leave it as is for future advanced depth selection functionality which should be apparent.
+		/// </summary>
+		public Vector3 Unproject(Vector3 position, Matrix projection, Matrix view, Matrix world, GraphicsDevice gd)
+		{
+			if (position.Z > gd.Viewport.MaxDepth)
+				throw new Exception("Source Z must be less than MaxDepth ");
+			Matrix wvp = Matrix.Multiply(view, projection);
+			Matrix inv = Matrix.Invert(wvp);
+			Vector3 clipSpace = position;
+			clipSpace.X = (((position.X - gd.Viewport.X) / ((float)gd.Viewport.Width)) * 2f) - 1f;
+			clipSpace.Y = -((((position.Y - gd.Viewport.Y) / ((float)gd.Viewport.Height)) * 2f) - 1f);
+			clipSpace.Z = (position.Z - gd.Viewport.MinDepth) / (gd.Viewport.MaxDepth - gd.Viewport.MinDepth); // >> Oo <<
+			Vector3 invsrc = Vector3.Transform(clipSpace, inv);
+			float a = (((clipSpace.X * inv.M14) + (clipSpace.Y * inv.M24)) + (clipSpace.Z * inv.M34)) + inv.M44;
+			return invsrc / a;
 		}
 	}
 }
