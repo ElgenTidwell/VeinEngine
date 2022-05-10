@@ -14,6 +14,18 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin ../../../../OneDrive/Documents/1643740501_pvz-girasol.gif
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:../../../../OneDrive/Documents/1643740501_pvz-girasol.gif;Textures/1643740501_pvz-girasol.gif
+
 #begin Audio/missing.wav
 /copy:Audio/missing.wav
 

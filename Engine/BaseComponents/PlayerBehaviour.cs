@@ -14,6 +14,8 @@ namespace VeinEngine.Engine.BaseComponents
 		public Vector3 camForward, camRight, camUp;
 		public Capsule collisionBox;
 
+		float Grav;
+
 		Texture2D tex;
 		Model defaultCube;
 		Vector3 wishdir;
@@ -88,13 +90,9 @@ namespace VeinEngine.Engine.BaseComponents
 			{
 				MouseLock = !MouseLock;
 			}
-			if (state.RightButton == ButtonState.Pressed)
+			if (KeyboardIN.HasBeenPressed(Keys.R))
 			{
-
-			}
-			if (state.RightButton == ButtonState.Released)
-			{
-
+				GameManager.SoftShadows = !GameManager.SoftShadows;
 			}
 
 			float xsin = MathF.Cos(MathHelper.ToRadians(camera.rotation.X));
@@ -114,7 +112,7 @@ namespace VeinEngine.Engine.BaseComponents
 
 			camUp.Normalize();
 
-			if (KeyboardIN.HasBeenPressed(Keys.Space))
+			if (KeyboardIN.HasBeenPressed(Keys.E))
 			{
 				WorldObject rigidbodyTest = new WorldObject();
 				rigidbodyTest.position = camera.position + Vector3.Up + camForward * 3;
@@ -133,6 +131,11 @@ namespace VeinEngine.Engine.BaseComponents
 				rigidbodyTest.Start();
 
 				GameManager._instance.loadedEntities.Add(rigidbodyTest);
+			}
+			if(KeyboardIN.HasBeenPressed(Keys.Space))
+			{
+				BEPUutilities.Vector3 v = new BEPUutilities.Vector3(0, 2, 0);
+				collisionBox.ApplyLinearImpulse(ref v);
 			}
 
 

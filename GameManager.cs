@@ -50,11 +50,14 @@ namespace VeinEngine
 		public Space space;
 
 		public static bool Fullbright = false;
+		public static bool SoftShadows = true;
 		protected static bool MouseLock = true;
+
+		static bool TestLight = false;
 
 		Model map;
 		Texture2D smap;
-		int texelsresolution = 10;
+		int texelsresolution = 12;
 		public Texture2D tex;
 
 		Model defaultCube;
@@ -190,6 +193,11 @@ namespace VeinEngine
 		void ShadowCast()
 		{
 			Color[] data = new Color[smap.Width * smap.Height];
+			if (Fullbright)
+			{
+				smap.SetData(data);
+				return;
+			}
 			smap.GetData(data);
 
 			SetColors(data);
@@ -209,7 +217,45 @@ namespace VeinEngine
 					data[z * smap.Width + x] = col;
 				}
 			}
+			if(SoftShadows)
+			{
+				for (int x = 1; x < smap.Width - 1; x++)
+				{
+					for (int z = 1; z < smap.Height - 1; z++)
+					{
+						int averageR = (data[z * smap.Width + x].R + data[z * smap.Width + (x - 1)].R +
+							data[z * smap.Width + (x + 1)].R + data[(z - 1) * smap.Width + x].R + data[(z + 1) * smap.Width + x].R) / 5;
+
+						int averageG = (data[z * smap.Width + x].G + data[z * smap.Width + (x - 1)].G +
+							data[z * smap.Width + (x + 1)].G + data[(z - 1) * smap.Width + x].G + data[(z + 1) * smap.Width + x].G) / 5;
+
+						int averageB = (data[z * smap.Width + x].B + data[z * smap.Width + (x - 1)].B +
+							data[z * smap.Width + (x + 1)].B + data[(z - 1) * smap.Width + x].B + data[(z + 1) * smap.Width + x].B) / 5;
+
+						int averageA = (data[z * smap.Width + x].A + data[z * smap.Width + (x - 1)].A +
+							data[z * smap.Width + (x + 1)].A + data[(z - 1) * smap.Width + x].A + data[(z + 1) * smap.Width + x].A);
+
+						averageA += (data[(z - 1) * smap.Width + x].A + data[(z - 1) * smap.Width + (x - 1)].A +
+							data[(z - 1) * smap.Width + (x + 1)].A + data[(z - 1) * smap.Width + x - 1].A + data[(z + 1) * smap.Width + x - 1].A);
+
+						averageA += (data[(z - 1) * smap.Width + x].A + data[(z - 1) * smap.Width + (x - 1)].A +
+							data[(z - 1) * smap.Width + (x + 1)].A + data[(z - 1) * smap.Width + x + 1].A + data[(z + 1) * smap.Width + x + 1].A);
+
+						averageA /= 15;
+
+						data[z * smap.Width + x] = new Color(averageR, averageG, averageB, averageA);
+					}
+				}
+			}
 			smap.SetData(data);
+
+			_spriteBatch.Begin();
+
+			_spriteBatch.GraphicsDevice.SamplerStates[0] = SamplerState.PointClamp;
+
+			_spriteBatch.Draw(smap, GraphicsDevice.Viewport.Bounds, Color.White);
+
+			_spriteBatch.End();
 		}
 		Color ColorCast()
 		{
@@ -219,21 +265,29 @@ namespace VeinEngine
 			Vector2 p = new Vector2(((float)castX / (float)smap.Width) * GraphicsDevice.Viewport.Width,
 												((float)castZ / ((float)smap.Height)) * GraphicsDevice.Viewport.Height);
 
-			Ray screenRay = GetScreenVector2AsRayInto3dWorld(p, Camera.main.projectionMatrix, Camera.main.viewMatrix, Camera.main.worldMatrix, 0.03f, GraphicsDevice);
-			screenRay.Position -= (Camera.main.viewOffset / 2f) - Vector3.Up*0.04f;
+			//Ray screenRay = GetScreenVector2AsRayInto3dWorld(p, Camera.main.projectionMatrix, Camera.main.viewMatrix, Camera.main.worldMatrix, 0.3f, GraphicsDevice);
+
+			Vector3 nearWorldPoint = GraphicsDevice.Viewport.Unproject(new Vector3(p.X, p.Y, 0), Camera.main.projectionMatrix, Camera.main.viewMatrix, Camera.main.worldMatrix);
+			Vector3 farWorldPoint = GraphicsDevice.Viewport.Unproject(new Vector3(p.X, p.Y, 1), Camera.main.projectionMatrix, Camera.main.viewMatrix, Camera.main.worldMatrix);
+
+			Ray screenRay = new Ray(nearWorldPoint, farWorldPoint - nearWorldPoint);
+			screenRay.Position -= (Camera.main.viewOffset / 2f);
 			RayCastResult hit;
 			BEPUutilities.Ray ray = new BEPUutilities.Ray(new BEPUutilities.Vector3(screenRay.Position.X, screenRay.Position.Y, screenRay.Position.Z), new BEPUutilities.Vector3(screenRay.Direction.X, screenRay.Direction.Y, screenRay.Direction.Z));
 
-			if (space.RayCast(ray, 100, RayCastFilter, out hit))
+			if (space.RayCast(ray, 1, RayCastFilter, out hit))
 			{
 				RayCastResult hit2;
+
+				Vector3 direction = TestLight ? Vector3.UnitY * 8 - new Vector3(hit.HitData.Location.X, hit.HitData.Location.Y, hit.HitData.Location.Z) : new Vector3(1f, 1f, -0.6f);
+
 				Ray toLight = new Ray(new Vector3(hit.HitData.Location.X + hit.HitData.Normal.X * 0.1f, hit.HitData.Location.Y + hit.HitData.Normal.Y * -0.1f,
-					hit.HitData.Location.Z + hit.HitData.Normal.Z * 0.1f), new Vector3(1f, 1f, -0.6f));
+					hit.HitData.Location.Z + hit.HitData.Normal.Z * 0.1f), direction);
 				ray = new BEPUutilities.Ray(new BEPUutilities.Vector3(toLight.Position.X, toLight.Position.Y, toLight.Position.Z), new BEPUutilities.Vector3(toLight.Direction.X, toLight.Direction.Y, toLight.Direction.Z));
 
-				if (space.RayCast(ray, 50, RayCastFilter2, out hit2))
+				if (space.RayCast(ray, 100, RayCastFilter2, out hit2))
 				{
-					return new Color(0, 0, 0, 150);
+					_color = new Color(0, 0, 0, 150);
 				}
 			}
 			return _color;
@@ -249,21 +303,13 @@ namespace VeinEngine
 
 		protected override void Draw(GameTime gameTime)
 		{
-			ShadowCast();
-
 			GraphicsDevice.Clear(Color.SkyBlue);
 
 			GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
 			foreach (WorldObject ent in loadedEntities) ent.Render();
 
-			_spriteBatch.Begin();
-
-			GraphicsDevice.SamplerStates[0] = SamplerState.AnisotropicClamp;
-
-			_spriteBatch.Draw(smap, GraphicsDevice.Viewport.Bounds,Color.White);
-
-			_spriteBatch.End();
+			ShadowCast();
 
 			base.Draw(gameTime);
 		}

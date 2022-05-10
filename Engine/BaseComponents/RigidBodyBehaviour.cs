@@ -31,9 +31,9 @@ namespace VeinEngine.Engine.BaseComponents
 
 			var q = Quaternion.CreateFromYawPitchRoll(MathHelper.ToRadians(parentObject.rotation.Y), MathHelper.ToRadians(parentObject.rotation.X), MathHelper.ToRadians(parentObject.rotation.Z));
 
-			box.Orientation = new BEPUutilities.Quaternion(q.X,q.Y,q.Z,q.W);
-			
 			GameManager._instance.space.Add(box);
+
+			box.Orientation = new BEPUutilities.Quaternion(q.X, q.Y, q.Z, q.W);
 		}
 
 		public override void Update(GameTime gameTime)
